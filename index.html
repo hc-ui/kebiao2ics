@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>课表转日历 — 把大学课程表变成手机日历（.ics 生成器）| kebiao2ics</title>
+<meta name="description" content="免费把大学课程表转成 .ics 日历文件，导入 iPhone、安卓、Apple Watch、Outlook、Google 日历。支持单双周、分段周数、自定义作息时间、上课提醒。纯网页本地运行，课表数据不上传。">
+<meta property="og:title" content="课表转日历 — 5 分钟把课程表装进手机日历">
+<meta property="og:description" content="支持单双周、分段周数、自定义作息、上课提醒。纯本地运行，数据不上传。">
+<meta property="og:url" content="https://hc-ui.github.io/kebiao2ics/">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='8' y='14' width='84' height='78' rx='12' fill='%236366f1'/%3E%3Crect x='8' y='34' width='84' height='58' rx='8' fill='%23eef2ff'/%3E%3Crect x='22' y='4' width='10' height='20' rx='5' fill='%234338ca'/%3E%3Crect x='68' y='4' width='10' height='20' rx='5' fill='%234338ca'/%3E%3Crect x='20' y='44' width='26' height='18' rx='4' fill='%23a5b4fc'/%3E%3Crect x='54' y='68' width='26' height='18' rx='4' fill='%236366f1'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>课表转日历</h1>
+      <p class="tagline">把大学课程表变成手机日历文件（.ics）——iPhone、安卓、Apple Watch、电脑日历都能导入。<br>
+      支持<b>单双周</b>、<b>分段周数</b>、<b>自定义作息</b>、<b>上课提醒</b>。<b>纯网页本地运行，课表不会上传到任何服务器。</b></p>
+    </div>
+    <div class="gh">
+      <a href="https://github.com/hc-ui/kebiao2ics" target="_blank" rel="noopener">GitHub 开源</a>
+      <a href="https://github.com/hc-ui/kebiao2ics" target="_blank" rel="noopener"><img src="https://img.shields.io/github/stars/hc-ui/kebiao2ics?style=social" alt="GitHub stars" height="20"></a>
+    </div>
+  </header>
+
+  <section class="card" id="semesterCard">
+    <h2><span class="step">1</span>学期设置</h2>
+    <div class="row3">
+      <label>第一周周一的日期
+        <input type="date" id="firstMonday">
+        <small>填开学第一周的周一。选了其他日期会自动对齐到那一周的周一。</small>
+      </label>
+      <label>日历名称
+        <input type="text" id="calName" maxlength="30" placeholder="如：2026秋课表">
+        <small>会显示在手机日历的订阅列表里。</small>
+      </label>
+      <label>上课前提醒
+        <select id="alarm">
+          <option value="0">不提醒</option>
+          <option value="5">提前 5 分钟</option>
+          <option value="10">提前 10 分钟</option>
+          <option value="15" selected>提前 15 分钟</option>
+          <option value="20">提前 20 分钟</option>
+          <option value="30">提前 30 分钟</option>
+        </select>
+        <small>每节课开始前弹出通知。</small>
+      </label>
+    </div>
+    <details id="periodsDetails">
+      <summary>作息时间表（第几节课几点上）— 点击展开，可按你学校修改</summary>
+      <div class="preset-row">
+        <span>快速预设：</span>
+        <button type="button" class="mini" data-preset="std45">8:00 开始 · 45 分钟/节</button>
+        <button type="button" class="mini" data-preset="std50">8:30 开始 · 50 分钟/节</button>
+      </div>
+      <div id="periodsList"></div>
+      <div class="btns">
+        <button type="button" class="mini" id="addPeriod">+ 加一节</button>
+        <button type="button" class="mini" id="delPeriod">− 删掉最后一节</button>
+      </div>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">2</span>添加课程</h2>
+    <form id="courseForm" autocomplete="off">
+      <div class="row3">
+        <label>课程名 <span class="req">*</span>
+          <input type="text" id="cName" maxlength="40" placeholder="如：高等数学A" required>
+        </label>
+        <label>地点
+          <input type="text" id="cLoc" maxlength="40" placeholder="如：教1-101">
+        </label>
+        <label>老师
+          <input type="text" id="cTeacher" maxlength="30" placeholder="选填">
+        </label>
+      </div>
+      <div class="row4">
+        <label>星期
+          <select id="cDay"></select>
+        </label>
+        <label>开始节次
+          <select id="cStart"></select>
+        </label>
+        <label>结束节次
+          <select id="cEnd"></select>
+        </label>
+        <label>上课周数 <span class="req">*</span>
+          <input type="text" id="cWeeks" placeholder="如 1-16、1-8,10-16、2-16双" required>
+          <small id="weeksHint">支持：1-16 · 1-8,10-16 · 2-16双 · 1-15单</small>
+        </label>
+      </div>
+      <div class="btns">
+        <button type="submit" class="primary" id="courseSubmit">添加课程</button>
+        <button type="button" id="courseCancel" hidden>取消编辑</button>
+        <span class="spacer"></span>
+        <button type="button" class="ghost" id="loadSample">载入示例课表</button>
+        <button type="button" class="ghost danger" id="clearAll">清空全部</button>
+      </div>
+    </form>
+    <ul id="courseList" class="course-list"></ul>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">3</span>课表预览</h2>
+    <div id="previewEmpty" class="placeholder">添加课程后这里会显示一周课表。</div>
+    <div id="preview" class="preview" hidden></div>
+    <p class="note" id="parityNote" hidden>标「单」「双」的课程只在单/双周上课，生成的日历会自动排对，请放心。</p>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">4</span>生成日历文件</h2>
+    <p id="stats" class="stats"></p>
+    <div class="btns">
+      <button type="button" class="primary big" id="generate">生成并下载 .ics 日历文件</button>
+      <button type="button" class="ghost" id="exportJson">备份课表配置</button>
+      <label class="ghost btn-like" for="importJson">恢复课表配置</label>
+      <input type="file" id="importJson" accept=".json" hidden>
+    </div>
+    <p id="genError" class="error" hidden></p>
+
+    <div class="howto">
+      <h3>下载后怎么导入手机日历？</h3>
+      <details>
+        <summary>iPhone / iPad / Apple Watch</summary>
+        <ol>
+          <li>用 Safari 打开本页并下载 .ics 文件（微信内打开请先点右上角「在浏览器打开」）。</li>
+          <li>打开「文件」App → 「下载」文件夹，点击刚下载的 .ics 文件。</li>
+          <li>点「添加全部」，选择要放入的日历即可；Apple Watch 会自动同步。</li>
+        </ol>
+      </details>
+      <details>
+        <summary>安卓（小米 / 华为 / 荣耀 / OPPO / vivo 等）</summary>
+        <ol>
+          <li>下载 .ics 文件后，用文件管理器点击打开，一般会弹出「导入到日历」。</li>
+          <li>如果系统日历不支持，安装「Google 日历」或使用系统日历设置里的「导入」功能。</li>
+        </ol>
+      </details>
+      <details>
+        <summary>电脑：Outlook / Google 日历 / Apple 日历</summary>
+        <ol>
+          <li>Outlook：文件 → 打开和导出 → 导入/导出 → 导入 iCalendar (.ics)。</li>
+          <li>Google 日历：网页版右上角设置 → 导入和导出 → 选择文件导入。</li>
+          <li>Mac 日历：直接双击 .ics 文件。</li>
+        </ol>
+      </details>
+      <details>
+        <summary>常见问题</summary>
+        <ul>
+          <li><b>学期中调课/节假日怎么办？</b>直接在手机日历里删除或移动那几节课的日程即可；也可以回到本页改好周数重新生成导入（同一门课会自动覆盖，不会重复）。</li>
+          <li><b>换手机 / 下学期还要用？</b>点「备份课表配置」存一个 JSON 文件，下次「恢复课表配置」即可接着改。课表数据平时只存在你这台设备的浏览器里。</li>
+          <li><b>导入错了想全部删掉？</b>导入时选择放进一个新建的日历（如「2026秋课表」），想删时整个日历删掉即可。</li>
+        </ul>
+      </details>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      <a href="https://github.com/hc-ui/kebiao2ics" target="_blank" rel="noopener">开源地址</a> ·
+      <a href="https://github.com/hc-ui/kebiao2ics/issues" target="_blank" rel="noopener">问题反馈</a> ·
+      MIT License
+    </p>
+    <p>所有数据仅保存在你的浏览器本地（localStorage），本站无后端、无统计、无 Cookie。</p>
+  </footer>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
