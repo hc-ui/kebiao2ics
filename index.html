@@ -114,14 +114,14 @@
 
   <section class="card">
     <h2><span class="step">4</span>生成日历文件</h2>
-    <p id="stats" class="stats"></p>
+    <p id="stats" class="stats" aria-live="polite"></p>
     <div class="btns">
       <button type="button" class="primary big" id="generate">生成并下载 .ics 日历文件</button>
       <button type="button" class="ghost" id="exportJson">备份课表配置</button>
       <label class="ghost btn-like" for="importJson">恢复课表配置</label>
       <input type="file" id="importJson" accept=".json" hidden>
     </div>
-    <p id="genError" class="error" hidden></p>
+    <p id="genError" class="error" aria-live="assertive" hidden></p>
 
     <div class="howto">
       <h3>下载后怎么导入手机日历？</h3>

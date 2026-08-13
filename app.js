@@ -1,4 +1,4 @@
-import { parseWeeks, mondayOf, generateICS, countEvents } from "./ics.js";
+import { parseWeeks, mondayOf, generateICS, countEvents, findConflicts } from "./ics.js";
 
 const STORE_KEY = "kebiao2ics-v1";
 const DAY_NAMES = ["", "周一", "周二", "周三", "周四", "周五", "周六", "周日"];
@@ -326,8 +326,11 @@ $("clearAll").addEventListener("click", () => {
 
 function renderCourses() {
   const ul = $("courseList");
-  ul.innerHTML = state.courses
-    .map((c, i) => {
+  const view = state.courses
+    .map((c, i) => ({ c, i }))
+    .sort((x, y) => x.c.day - y.c.day || x.c.startPeriod - y.c.startPeriod);
+  ul.innerHTML = view
+    .map(({ c, i }) => {
       const [, deep] = courseColor(i);
       let weeksLabel = `第${c.weeks}周`;
       try {
@@ -438,7 +441,20 @@ function renderStats() {
     } catch { /* 忽略 */ }
   }
   const range = maxW ? `覆盖第 <b>${minW}–${maxW}</b> 周` : "";
-  el.innerHTML = `共 <b>${state.courses.length}</b> 门课 · 将生成 <b>${events}</b> 个日历日程 · ${range}`;
+  let html = `共 <b>${state.courses.length}</b> 门课 · 将生成 <b>${events}</b> 个日历日程 · ${range}`;
+
+  const conflicts = findConflicts(state.courses);
+  if (conflicts.length) {
+    const items = conflicts.slice(0, 3).map(({ a, b, weeks }) => {
+      const A = state.courses[a];
+      const B = state.courses[b];
+      const wLabel = weeks.length > 4 ? `${weeks.slice(0, 4).join("、")} 等 ${weeks.length} 周` : `${weeks.join("、")} 周`;
+      return `「${esc(A.name)}」和「${esc(B.name)}」在${DAY_NAMES[A.day]}第 ${wLabel}时间重叠`;
+    });
+    const more = conflicts.length > 3 ? `，另有 ${conflicts.length - 3} 处` : "";
+    html += `<span class="conflict-warn">注意：${items.join("；")}${more}，请核对星期 / 节次 / 周数。</span>`;
+  }
+  el.innerHTML = html;
 }
 
 function refreshOutputs() {
@@ -480,7 +496,9 @@ $("exportJson").addEventListener("click", () => {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "kebiao2ics-备份.json";
+  const today = new Date();
+  const stamp = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  a.download = `kebiao2ics-备份-${stamp}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();

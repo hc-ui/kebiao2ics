@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseWeeks, addDays, mondayOf, generateICS, countEvents } from "../ics.js";
+import { parseWeeks, addDays, mondayOf, generateICS, countEvents, findConflicts } from "../ics.js";
 
 // ---------------------------------------------------------------------------
 // parseWeeks
@@ -276,4 +276,42 @@ test("countEvents: 正常统计并忽略未填完整的课程", () => {
     ]),
     4 + 2
   );
+});
+
+// ---------------------------------------------------------------------------
+// findConflicts
+// ---------------------------------------------------------------------------
+
+test("findConflicts: 同天同节次同周 → 冲突", () => {
+  const conflicts = findConflicts([
+    { name: "A", day: 1, startPeriod: 1, endPeriod: 2, weeks: "1-16" },
+    { name: "B", day: 1, startPeriod: 2, endPeriod: 3, weeks: "8-10" },
+  ]);
+  assert.equal(conflicts.length, 1);
+  assert.deepEqual(conflicts[0].weeks, [8, 9, 10]);
+});
+
+test("findConflicts: 单双周互补 → 不冲突", () => {
+  const conflicts = findConflicts([
+    { name: "A", day: 1, startPeriod: 1, endPeriod: 2, weeks: "1-16单" },
+    { name: "B", day: 1, startPeriod: 1, endPeriod: 2, weeks: "2-16双" },
+  ]);
+  assert.equal(conflicts.length, 0);
+});
+
+test("findConflicts: 不同天或节次不重叠 → 不冲突", () => {
+  const conflicts = findConflicts([
+    { name: "A", day: 1, startPeriod: 1, endPeriod: 2, weeks: "1-16" },
+    { name: "B", day: 2, startPeriod: 1, endPeriod: 2, weeks: "1-16" },
+    { name: "C", day: 1, startPeriod: 3, endPeriod: 4, weeks: "1-16" },
+  ]);
+  assert.equal(conflicts.length, 0);
+});
+
+test("findConflicts: 周数未填的课程跳过", () => {
+  const conflicts = findConflicts([
+    { name: "A", day: 1, startPeriod: 1, endPeriod: 2, weeks: "" },
+    { name: "B", day: 1, startPeriod: 1, endPeriod: 2, weeks: "1-16" },
+  ]);
+  assert.equal(conflicts.length, 0);
 });

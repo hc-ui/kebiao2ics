@@ -228,6 +228,34 @@ export function generateICS(cfg) {
   return lines.map(foldLine).join("\r\n") + "\r\n";
 }
 
+/**
+ * 检测课程时间冲突：同一天、节次区间重叠、且上课周数有交集。
+ * 返回 [{a, b, weeks}]，a/b 为课程在数组中的下标，weeks 为冲突的周数。
+ * 周数无法解析的课程跳过（表单校验会另行提示）。
+ */
+export function findConflicts(courses) {
+  const parsed = courses.map((c) => {
+    try {
+      return new Set(Array.isArray(c.weeks) ? c.weeks : parseWeeks(String(c.weeks)));
+    } catch {
+      return null;
+    }
+  });
+  const conflicts = [];
+  for (let i = 0; i < courses.length; i++) {
+    for (let j = i + 1; j < courses.length; j++) {
+      const A = courses[i];
+      const B = courses[j];
+      if (Number(A.day) !== Number(B.day)) continue;
+      if (Number(A.endPeriod) < Number(B.startPeriod) || Number(B.endPeriod) < Number(A.startPeriod)) continue;
+      if (!parsed[i] || !parsed[j]) continue;
+      const shared = [...parsed[j]].filter((w) => parsed[i].has(w)).sort((x, y) => x - y);
+      if (shared.length) conflicts.push({ a: i, b: j, weeks: shared });
+    }
+  }
+  return conflicts;
+}
+
 /** 统计将生成的事件数（供界面展示）。解析失败的课程计为 0。 */
 export function countEvents(courses) {
   let n = 0;
