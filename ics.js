@@ -136,6 +136,7 @@ export function generateICS(cfg) {
   const firstMonday = mondayOf(cfg.firstMonday);
 
   const events = [];
+  const seenUids = new Set();
   courses.forEach((c, idx) => {
     if (!c.name || !String(c.name).trim()) throw new Error(`第 ${idx + 1} 门课程缺少名称`);
     const day = Number(c.day);
@@ -160,8 +161,14 @@ export function generateICS(cfg) {
       if (c.teacher && String(c.teacher).trim()) descParts.push(`教师：${c.teacher}`);
       const periodLabel = sp === ep ? `第${sp}节` : `第${sp}-${ep}节`;
       descParts.push(`第${w}周 星期${DAY_CN[day]} ${periodLabel}`);
+      // 同名同时段的重复条目（录入错误，另有冲突警告）也保证 UID 唯一
+      let uid = `kb2ics-${hashText(c.name)}-d${day}-p${sp}-${ep}-w${w}@kebiao2ics`;
+      for (let k = 2; seenUids.has(uid); k++) {
+        uid = `kb2ics-${hashText(c.name)}-d${day}-p${sp}-${ep}-w${w}-${k}@kebiao2ics`;
+      }
+      seenUids.add(uid);
       events.push({
-        uid: `kb2ics-${hashText(c.name)}-d${day}-p${sp}-w${w}@kebiao2ics`,
+        uid,
         start: `${dt}T${startT}`,
         end: `${dt}T${endT}`,
         summary: c.name,

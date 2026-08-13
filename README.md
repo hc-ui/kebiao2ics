@@ -26,6 +26,7 @@ GitHub 上已有的课表转 ics 工具，要么只适配某一所学校的教�
 - **自定义作息时间**：每节课几点上由你定，内置两套常用预设，适配任何学校
 - **上课提醒**：每节课提前 5–30 分钟弹通知（可关）
 - **课表预览**：填完即所见即所得，颜色区分课程，单双周自动标注
+- **时间冲突提醒**：两门课同一天节次重叠、周数又有交集时自动警告（单双周交替不误报），录错立刻能发现
 - **本地保存**：课表存在浏览器里，关掉网页不丢；支持导出/恢复 JSON 备份，下学期改改继续用
 - **稳定事件 ID**：重新生成再导入时，Google / Outlook / Mac 日历会自动覆盖旧日程而不是产生重复（iPhone 建议导入到单独日历，便于整体替换）
 - **隐私**：纯静态页面，无后端、无统计、无 Cookie，课表数据不离开你的设备
@@ -80,6 +81,7 @@ node --test tests/core.test.mjs
 A zero-install, browser-only tool that converts Chinese university class schedules into `.ics` calendar files.
 
 - Handles the quirks of Chinese timetables: odd/even weeks (单双周), split week ranges (`1-8,10-16`), numbered class periods with per-school time tables
+- Detects time conflicts between courses (same day, overlapping periods, intersecting weeks — alternating odd/even weeks don't false-positive)
 - Per-class reminders via `VALARM`; stable UIDs so re-imports update instead of duplicating
 - Fully client-side: no backend, no tracking, your schedule never leaves the device
 - Core logic (`ics.js`) is a dependency-free ES module with a `node --test` suite; RFC 5545 compliant output (proper escaping, 75-octet line folding, `Asia/Shanghai` VTIMEZONE)

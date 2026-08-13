@@ -22,6 +22,11 @@ body {
 }
 .wrap { max-width: 980px; margin: 0 auto; padding: 30px 18px 60px; }
 
+.wx-tip {
+  background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c;
+  border-radius: 10px; padding: 10px 14px; font-size: 13.5px; margin-bottom: 16px;
+}
+
 header { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 22px; flex-wrap: wrap; }
 h1 { font-size: 30px; margin: 0 0 6px; letter-spacing: 1px; }
 .tagline { margin: 0; color: var(--muted); font-size: 14.5px; }

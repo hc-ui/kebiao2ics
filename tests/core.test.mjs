@@ -206,6 +206,14 @@ test("generateICS: UID 稳定且唯一", () => {
   assert.deepEqual(uids, uids2);
 });
 
+test("generateICS: 同名同时段的重复课程 UID 仍唯一", () => {
+  const dup = { name: "高数", day: 1, startPeriod: 1, endPeriod: 2, weeks: "1-4" };
+  const ics = generateICS(baseCfg({ courses: [dup, { ...dup }] }));
+  const uids = [...ics.matchAll(/UID:(\S+)/g)].map((m) => m[1]);
+  assert.equal(uids.length, 8);
+  assert.equal(new Set(uids).size, 8);
+});
+
 test("generateICS: UID 不随课程列表顺序变化（重新导入可覆盖）", () => {
   const a = { name: "A课", day: 1, startPeriod: 1, endPeriod: 1, weeks: "1-2" };
   const b = { name: "B课", day: 2, startPeriod: 2, endPeriod: 3, weeks: "1" };

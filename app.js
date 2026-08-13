@@ -77,7 +77,11 @@ let state = loadState();
 let editIndex = -1;
 
 function save() {
-  localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  } catch {
+    /* 隐私模式或存储被禁用时，数据仅在本次会话内有效，不影响生成功能 */
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -530,6 +534,10 @@ $("importJson").addEventListener("change", async (e) => {
 // ---------------------------------------------------------------------------
 // 启动
 // ---------------------------------------------------------------------------
+
+if (/MicroMessenger|\bQQ\//i.test(navigator.userAgent)) {
+  $("wxTip").hidden = false;
+}
 
 fillDaySelect();
 renderSemester();
