@@ -70,7 +70,7 @@ python -m http.server 8000   # 或任何静态服务器
 核心逻辑（周数解析、ics 生成）在 `ics.js`，跑测试：
 
 ```bash
-node --test tests/
+node --test tests/core.test.mjs
 ```
 
 ## English
