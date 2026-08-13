@@ -1,0 +1,22 @@
+name: Bug 反馈
+description: 页面报错、生成的日历不对、导入失败等问题
+title: "[Bug] 一句话描述问题"
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 遇到了什么问题
+      description: 说明你期望的结果和实际发生的情况；涉及生成结果不对时，请附上课程的星期/节次/周数填写内容
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: 浏览器与设备
+      placeholder: 如：iPhone Safari / Windows Chrome 126 / 微信内置浏览器
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤（可选）
+      placeholder: 1. 打开页面 2. …

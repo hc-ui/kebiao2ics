@@ -101,6 +101,22 @@ function toIcsTime(hhmm) {
   return `${pad2(m[1])}${m[2]}00`;
 }
 
+/** 取第 idx 节（1 起）的开始/结束时间，出错时指明具体节次。 */
+function periodTime(periods, idx, field) {
+  try {
+    return toIcsTime(periods[idx - 1][field]);
+  } catch (e) {
+    throw new Error(`作息时间表第 ${idx} 节的${field === "start" ? "开始" : "结束"}时间有误：${e.message}`);
+  }
+}
+
+/** 稳定的短哈希（djb2），用于生成不随课程增删顺序变化的事件 UID。 */
+function hashText(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
 /**
  * 生成 .ics 文件内容。
  *
@@ -130,8 +146,13 @@ export function generateICS(cfg) {
       throw new Error(`课程「${c.name}」的节次超出作息表范围（共 ${periods.length} 节）`);
     }
     const weeks = Array.isArray(c.weeks) ? c.weeks : parseWeeks(String(c.weeks));
-    const startT = toIcsTime(periods[sp - 1].start);
-    const endT = toIcsTime(periods[ep - 1].end);
+    const startT = periodTime(periods, sp, "start");
+    const endT = periodTime(periods, ep, "end");
+    if (endT <= startT) {
+      throw new Error(
+        `课程「${c.name}」的下课时间不晚于上课时间，请检查作息时间表第 ${sp} 节到第 ${ep} 节的时间设置`
+      );
+    }
     for (const w of weeks) {
       const date = addDays(firstMonday, (w - 1) * 7 + (day - 1));
       const dt = date.replace(/-/g, "");
@@ -140,7 +161,7 @@ export function generateICS(cfg) {
       const periodLabel = sp === ep ? `第${sp}节` : `第${sp}-${ep}节`;
       descParts.push(`第${w}周 星期${DAY_CN[day]} ${periodLabel}`);
       events.push({
-        uid: `kb2ics-c${idx}-d${day}-p${sp}-w${w}@kebiao2ics`,
+        uid: `kb2ics-${hashText(c.name)}-d${day}-p${sp}-w${w}@kebiao2ics`,
         start: `${dt}T${startT}`,
         end: `${dt}T${endT}`,
         summary: c.name,

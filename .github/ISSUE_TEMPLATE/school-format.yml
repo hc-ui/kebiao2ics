@@ -1,0 +1,29 @@
+name: 学校课表格式支持请求
+description: 告诉我你学校教务系统的课表长什么样，呼声高的会优先做自动导入
+title: "[格式支持] 学校名称"
+labels: ["school-format"]
+body:
+  - type: input
+    id: school
+    attributes:
+      label: 学校名称
+      placeholder: 如：XX大学
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: 教务系统（如果知道）
+      placeholder: 如：正方教务、强智科技、URP、自研系统…
+  - type: textarea
+    id: sample
+    attributes:
+      label: 课表样例
+      description: 从教务系统复制的课表文本、导出的 Excel 截图，或课表页面截图（请抹掉学号姓名等个人信息）
+    validations:
+      required: true
+  - type: textarea
+    id: periods
+    attributes:
+      label: 作息时间（可选）
+      description: 你学校每节课的上下课时间，方便内置成预设

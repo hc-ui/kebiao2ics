@@ -155,7 +155,27 @@ function renderPeriods() {
 
 $("addPeriod").addEventListener("click", () => {
   const last = state.periods[state.periods.length - 1];
-  state.periods.push({ start: last ? last.end : "08:00", end: last ? last.end : "08:45" });
+  const toMin = (t) => {
+    const m = String(t).match(/^(\d{1,2}):(\d{2})$/);
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  };
+  const toHHMM = (min) => {
+    const v = ((min % 1440) + 1440) % 1440;
+    return `${String(Math.floor(v / 60)).padStart(2, "0")}:${String(v % 60).padStart(2, "0")}`;
+  };
+  let start = "08:00";
+  let end = "08:45";
+  const ls = last ? toMin(last.start) : null;
+  const le = last ? toMin(last.end) : null;
+  if (ls !== null && le !== null && le > ls) {
+    // 课间默认 10 分钟，时长沿用上一节
+    start = toHHMM(le + 10);
+    end = toHHMM(le + 10 + (le - ls));
+  } else if (le !== null) {
+    start = toHHMM(le + 10);
+    end = toHHMM(le + 55);
+  }
+  state.periods.push({ start, end });
   save();
   renderPeriods();
 });

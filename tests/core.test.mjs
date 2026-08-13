@@ -206,6 +206,45 @@ test("generateICS: UID 稳定且唯一", () => {
   assert.deepEqual(uids, uids2);
 });
 
+test("generateICS: UID 不随课程列表顺序变化（重新导入可覆盖）", () => {
+  const a = { name: "A课", day: 1, startPeriod: 1, endPeriod: 1, weeks: "1-2" };
+  const b = { name: "B课", day: 2, startPeriod: 2, endPeriod: 3, weeks: "1" };
+  const uidsOf = (courses) =>
+    [...generateICS(baseCfg({ courses })).matchAll(/UID:(\S+)/g)].map((m) => m[1]).sort();
+  assert.deepEqual(uidsOf([a, b]), uidsOf([b, a]));
+});
+
+test("generateICS: 作息时间填错时报错指明节次", () => {
+  const badPeriods = [
+    { start: "08:00", end: "08:45" },
+    { start: "", end: "09:40" },
+  ];
+  assert.throws(
+    () =>
+      generateICS(
+        baseCfg({
+          periods: badPeriods,
+          courses: [{ name: "X", day: 1, startPeriod: 2, endPeriod: 2, weeks: "1" }],
+        })
+      ),
+    /第 2 节的开始时间/
+  );
+});
+
+test("generateICS: 下课时间早于上课时间时报错", () => {
+  const reversed = [{ start: "10:00", end: "08:00" }];
+  assert.throws(
+    () =>
+      generateICS(
+        baseCfg({
+          periods: reversed,
+          courses: [{ name: "Y", day: 1, startPeriod: 1, endPeriod: 1, weeks: "1" }],
+        })
+      ),
+    /下课时间不晚于上课时间/
+  );
+});
+
 test("generateICS: 错误提示友好", () => {
   assert.throws(() => generateICS(baseCfg({ courses: [] })), /请先添加课程/);
   assert.throws(
