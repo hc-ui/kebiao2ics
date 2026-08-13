@@ -9,6 +9,8 @@
 
 Turn your Chinese university class schedule into an `.ics` calendar file — entirely in the browser, nothing uploaded. Works with iPhone / Android / Apple Watch / Outlook / Google Calendar.
 
+![课程列表与课表预览截图](assets/screenshot.png)
+
 ## 为什么做这个
 
 - 教务系统只给你一张网页课表或 Excel，**不提供日历订阅**；
