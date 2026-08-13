@@ -517,6 +517,13 @@ $("importJson").addEventListener("change", async (e) => {
     if (!s.semester || !Array.isArray(s.periods) || !Array.isArray(s.courses)) {
       throw new Error("文件格式不对，请选择本站导出的备份文件");
     }
+    // 防御手工编辑过的备份：数字字段统一转回 number
+    s.courses = s.courses.map((c) => ({
+      ...c,
+      day: Number(c.day),
+      startPeriod: Number(c.startPeriod),
+      endPeriod: Number(c.endPeriod),
+    }));
     state = s;
     save();
     exitEditMode();
