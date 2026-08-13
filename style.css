@@ -93,6 +93,10 @@ details[open] summary { margin-bottom: 10px; }
 .period-row b { min-width: 44px; color: var(--ink); font-size: 12.5px; }
 .period-row input { margin-top: 0; padding: 4px 6px; font-size: 13px; }
 
+#adjustList { display: grid; gap: 8px; margin-bottom: 10px; }
+.adjust-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.adjust-row input, .adjust-row select { margin-top: 0; width: auto; flex: 0 1 auto; font-size: 13px; padding: 6px 8px; }
+
 .course-list { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 8px; }
 .course-item {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;

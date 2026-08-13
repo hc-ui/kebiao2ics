@@ -117,6 +117,13 @@ function hashText(s) {
   return h.toString(36);
 }
 
+/** 两个 "YYYY-MM-DD" 之间的天数差（b - a）。 */
+function diffDays(a, b) {
+  const [y1, m1, d1] = a.split("-").map(Number);
+  const [y2, m2, d2] = b.split("-").map(Number);
+  return Math.round((new Date(y2, m2 - 1, d2) - new Date(y1, m1 - 1, d1)) / 86400000);
+}
+
 /**
  * 生成 .ics 文件内容。
  *
@@ -126,18 +133,32 @@ function hashText(s) {
  * @param {Array<{start:string,end:string}>} cfg.periods  作息时间表，第 i 项为第 i+1 节
  * @param {Array<{name:string,location?:string,teacher?:string,day:number,startPeriod:number,endPeriod:number,weeks:string|number[]}>} cfg.courses
  * @param {number} [cfg.alarmMinutes=0]  提前提醒分钟数，0 表示不提醒
+ * @param {Array<{date:string,mode:"off"|"swap",sourceDay?:number}>} [cfg.adjustments=[]]
+ *   节假日调休：mode="off" 当天停课；mode="swap" 当天改上 sourceDay（1-7）那天的课。
  * @returns {string} ics 文本
  */
 export function generateICS(cfg) {
-  const { calendarName = "我的课表", periods, courses, alarmMinutes = 0 } = cfg;
+  const { calendarName = "我的课表", periods, courses, alarmMinutes = 0, adjustments = [] } = cfg;
   if (!cfg.firstMonday) throw new Error("请先设置第一周周一的日期");
   if (!Array.isArray(periods) || !periods.length) throw new Error("作息时间表为空");
   if (!Array.isArray(courses) || !courses.length) throw new Error("请先添加课程");
   const firstMonday = mondayOf(cfg.firstMonday);
 
-  const events = [];
-  const seenUids = new Set();
-  courses.forEach((c, idx) => {
+  // 调休规则表：date → rule（同一天多条规则时，后写的生效）
+  const ruleByDate = new Map();
+  for (const r of adjustments) {
+    if (!r || !/^\d{4}-\d{2}-\d{2}$/.test(String(r.date))) continue;
+    if (r.mode === "swap") {
+      const sd = Number(r.sourceDay);
+      if (!(sd >= 1 && sd <= 7)) continue;
+      ruleByDate.set(r.date, { mode: "swap", sourceDay: sd });
+    } else if (r.mode === "off") {
+      ruleByDate.set(r.date, { mode: "off" });
+    }
+  }
+
+  // 第一遍：校验每门课并准备好时间等派生数据
+  const prepared = courses.map((c, idx) => {
     if (!c.name || !String(c.name).trim()) throw new Error(`第 ${idx + 1} 门课程缺少名称`);
     const day = Number(c.day);
     if (!(day >= 1 && day <= 7)) throw new Error(`课程「${c.name}」的星期无效`);
@@ -154,29 +175,65 @@ export function generateICS(cfg) {
         `课程「${c.name}」的下课时间不晚于上课时间，请检查作息时间表第 ${sp} 节到第 ${ep} 节的时间设置`
       );
     }
-    for (const w of weeks) {
-      const date = addDays(firstMonday, (w - 1) * 7 + (day - 1));
+    return {
+      name: c.name,
+      location: c.location || "",
+      teacher: c.teacher && String(c.teacher).trim() ? String(c.teacher).trim() : "",
+      day, sp, ep, weeks, startT, endT,
+      periodLabel: sp === ep ? `第${sp}节` : `第${sp}-${ep}节`,
+    };
+  });
+
+  const events = [];
+  const seenUids = new Set();
+  const pushEvent = (uidBase, ev) => {
+    let uid = `${uidBase}@kebiao2ics`;
+    for (let k = 2; seenUids.has(uid); k++) uid = `${uidBase}-${k}@kebiao2ics`;
+    seenUids.add(uid);
+    events.push({ ...ev, uid });
+  };
+
+  // 常规每周课程（被调休规则覆盖的日期跳过）
+  for (const p of prepared) {
+    for (const w of p.weeks) {
+      const date = addDays(firstMonday, (w - 1) * 7 + (p.day - 1));
+      if (ruleByDate.has(date)) continue;
       const dt = date.replace(/-/g, "");
       const descParts = [];
-      if (c.teacher && String(c.teacher).trim()) descParts.push(`教师：${c.teacher}`);
-      const periodLabel = sp === ep ? `第${sp}节` : `第${sp}-${ep}节`;
-      descParts.push(`第${w}周 星期${DAY_CN[day]} ${periodLabel}`);
-      // 同名同时段的重复条目（录入错误，另有冲突警告）也保证 UID 唯一
-      let uid = `kb2ics-${hashText(c.name)}-d${day}-p${sp}-${ep}-w${w}@kebiao2ics`;
-      for (let k = 2; seenUids.has(uid); k++) {
-        uid = `kb2ics-${hashText(c.name)}-d${day}-p${sp}-${ep}-w${w}-${k}@kebiao2ics`;
-      }
-      seenUids.add(uid);
-      events.push({
-        uid,
-        start: `${dt}T${startT}`,
-        end: `${dt}T${endT}`,
-        summary: c.name,
-        location: c.location || "",
+      if (p.teacher) descParts.push(`教师：${p.teacher}`);
+      descParts.push(`第${w}周 星期${DAY_CN[p.day]} ${p.periodLabel}`);
+      pushEvent(`kb2ics-${hashText(p.name)}-d${p.day}-p${p.sp}-${p.ep}-w${w}`, {
+        start: `${dt}T${p.startT}`,
+        end: `${dt}T${p.endT}`,
+        summary: p.name,
+        location: p.location,
         description: descParts.join("\n"),
       });
     }
-  });
+  }
+
+  // 调休：换课日按 sourceDay 的课表补课
+  for (const [date, rule] of ruleByDate) {
+    if (rule.mode !== "swap") continue;
+    const dd = diffDays(firstMonday, date);
+    if (dd < 0) continue;
+    const w = Math.floor(dd / 7) + 1;
+    const dt = date.replace(/-/g, "");
+    for (const p of prepared) {
+      if (p.day !== rule.sourceDay || !p.weeks.includes(w)) continue;
+      const descParts = [];
+      if (p.teacher) descParts.push(`教师：${p.teacher}`);
+      descParts.push(`调休：本日按星期${DAY_CN[rule.sourceDay]}课表上课（第${w}周 ${p.periodLabel}）`);
+      pushEvent(`kb2ics-${hashText(p.name)}-adj${dt}-p${p.sp}-${p.ep}`, {
+        start: `${dt}T${p.startT}`,
+        end: `${dt}T${p.endT}`,
+        summary: p.name,
+        location: p.location,
+        description: descParts.join("\n"),
+      });
+    }
+  }
+
   events.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
 
   const now = new Date();

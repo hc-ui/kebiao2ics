@@ -58,6 +58,7 @@ function defaultState() {
     },
     periods: PRESETS.std45.map(([start, end]) => ({ start, end })),
     courses: [],
+    adjustments: [],
   };
 }
 
@@ -67,6 +68,7 @@ function loadState() {
     if (!raw) return defaultState();
     const s = JSON.parse(raw);
     if (!s.semester || !Array.isArray(s.periods) || !Array.isArray(s.courses)) return defaultState();
+    if (!Array.isArray(s.adjustments)) s.adjustments = [];
     return s;
   } catch {
     return defaultState();
@@ -201,6 +203,67 @@ document.querySelectorAll("[data-preset]").forEach((btn) => {
     renderPeriods();
     refreshOutputs();
   });
+});
+
+// ---------------------------------------------------------------------------
+// 节假日调休
+// ---------------------------------------------------------------------------
+
+function renderAdjustments() {
+  const box = $("adjustList");
+  if (!state.adjustments.length) {
+    box.innerHTML = '<p class="note" style="margin:6px 0">还没有调休规则。放假停课、节后补课都在这里配置。</p>';
+    renderStats();
+    return;
+  }
+  const dayOpts = (sel) =>
+    DAY_NAMES.slice(1)
+      .map((d, i) => `<option value="${i + 1}"${sel === i + 1 ? " selected" : ""}>按${d}的课上</option>`)
+      .join("");
+  box.innerHTML = state.adjustments
+    .map(
+      (r, i) => `
+      <div class="adjust-row" data-i="${i}">
+        <input type="date" class="adate" value="${esc(r.date || "")}">
+        <select class="amode">
+          <option value="off"${r.mode === "off" ? " selected" : ""}>当天停课</option>
+          ${dayOpts(r.mode === "swap" ? Number(r.sourceDay) : 0)}
+        </select>
+        <button type="button" class="mini danger adel">删除</button>
+      </div>`
+    )
+    .join("");
+  box.querySelectorAll(".adjust-row").forEach((row) => {
+    const i = Number(row.dataset.i);
+    row.querySelector(".adate").addEventListener("change", (e) => {
+      state.adjustments[i].date = e.target.value;
+      save();
+      renderStats();
+    });
+    row.querySelector(".amode").addEventListener("change", (e) => {
+      const v = e.target.value;
+      if (v === "off") {
+        state.adjustments[i] = { date: state.adjustments[i].date, mode: "off" };
+      } else {
+        state.adjustments[i] = { date: state.adjustments[i].date, mode: "swap", sourceDay: Number(v) };
+      }
+      save();
+      renderStats();
+    });
+    row.querySelector(".adel").addEventListener("click", () => {
+      state.adjustments.splice(i, 1);
+      save();
+      renderAdjustments();
+    });
+  });
+  renderStats();
+}
+
+$("addAdjust").addEventListener("click", () => {
+  state.adjustments.push({ date: "", mode: "off" });
+  save();
+  renderAdjustments();
+  $("adjustDetails").open = true;
 });
 
 // ---------------------------------------------------------------------------
@@ -445,7 +508,9 @@ function renderStats() {
     } catch { /* 忽略 */ }
   }
   const range = maxW ? `覆盖第 <b>${minW}–${maxW}</b> 周` : "";
-  let html = `共 <b>${state.courses.length}</b> 门课 · 将生成 <b>${events}</b> 个日历日程 · ${range}`;
+  const adjCount = state.adjustments.filter((r) => r.date).length;
+  const adjLabel = adjCount ? ` · 含 <b>${adjCount}</b> 条调休规则` : "";
+  let html = `共 <b>${state.courses.length}</b> 门课 · 将生成 <b>${events}</b> 个常规日程${adjLabel} · ${range}`;
 
   const conflicts = findConflicts(state.courses);
   if (conflicts.length) {
@@ -476,6 +541,7 @@ $("generate").addEventListener("click", () => {
       periods: state.periods,
       courses: state.courses,
       alarmMinutes: state.semester.alarm,
+      adjustments: state.adjustments.filter((r) => r.date),
     });
     const safeName = (state.semester.calName || "课表").replace(/[\\/:*?"<>|]/g, "_");
     const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
@@ -524,12 +590,14 @@ $("importJson").addEventListener("change", async (e) => {
       startPeriod: Number(c.startPeriod),
       endPeriod: Number(c.endPeriod),
     }));
+    if (!Array.isArray(s.adjustments)) s.adjustments = [];
     state = s;
     save();
     exitEditMode();
     renderSemester();
     renderPeriods();
     renderCourses();
+    renderAdjustments();
     refreshOutputs();
   } catch (err) {
     alert(`恢复失败：${err.message}`);
@@ -550,4 +618,5 @@ fillDaySelect();
 renderSemester();
 renderPeriods();
 renderCourses();
+renderAdjustments();
 refreshOutputs();

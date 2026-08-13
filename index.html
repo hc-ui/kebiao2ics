@@ -64,6 +64,14 @@
         <button type="button" class="mini" id="delPeriod">− 删掉最后一节</button>
       </div>
     </details>
+    <details id="adjustDetails">
+      <summary>节假日调休 / 停课（可选）— 如「10 月 8 日补上周五的课」</summary>
+      <div id="adjustList"></div>
+      <div class="btns">
+        <button type="button" class="mini" id="addAdjust">+ 添加一条调休</button>
+      </div>
+      <p class="note">调休写进生成的日历文件：停课日不排课，换课日按所选星期的课表排当周的课。上方课表预览仍显示常规每周安排。</p>
+    </details>
   </section>
 
   <section class="card">
@@ -152,7 +160,7 @@
       <details>
         <summary>常见问题</summary>
         <ul>
-          <li><b>学期中调课/节假日怎么办？</b>直接在手机日历里删除或移动那几节课的日程即可；也可以回到本页改好周数重新生成导入。Google / Outlook / Mac 日历会按事件 ID 自动覆盖；iPhone 日历建议把课表放在单独的日历里，重新导入前先删掉旧日历，最干净。</li>
+          <li><b>学期中调课/节假日怎么办？</b>放假停课、节后补课用第 1 步里的「节假日调休」配置后重新生成；个别单节课的临时变动直接在手机日历里删改即可。Google / Outlook / Mac 日历重新导入时会按事件 ID 自动覆盖；iPhone 日历建议把课表放在单独的日历里，重新导入前先删掉旧日历，最干净。</li>
           <li><b>换手机 / 下学期还要用？</b>点「备份课表配置」存一个 JSON 文件，下次「恢复课表配置」即可接着改。课表数据平时只存在你这台设备的浏览器里。</li>
           <li><b>导入错了想全部删掉？</b>导入时选择放进一个新建的日历（如「2026秋课表」），想删时整个日历删掉即可。</li>
         </ul>

@@ -287,6 +287,76 @@ test("countEvents: 正常统计并忽略未填完整的课程", () => {
 });
 
 // ---------------------------------------------------------------------------
+// 节假日调休
+// ---------------------------------------------------------------------------
+
+function eventBlocks(ics) {
+  return ics.split("BEGIN:VEVENT").slice(1);
+}
+
+test("调休: 停课日不生成当天日程，其余周正常", () => {
+  const ics = generateICS(baseCfg({ adjustments: [{ date: "2026-08-31", mode: "off" }] }));
+  const on0831 = eventBlocks(ics).filter((b) => b.includes(":20260831T"));
+  assert.equal(on0831.length, 0);
+  assert.match(ics, /DTSTART;TZID=Asia\/Shanghai:20260907T080000/);
+});
+
+test("调休: 换课日按目标星期课表补课并停掉原课", () => {
+  const ics = generateICS(
+    baseCfg({
+      courses: [
+        { name: "高数", day: 1, startPeriod: 1, endPeriod: 2, weeks: "1-2" },
+        { name: "周三课", day: 3, startPeriod: 1, endPeriod: 1, weeks: "1-2" },
+      ],
+      // 2026-09-02 = 第 1 周周三，按周一课表上课
+      adjustments: [{ date: "2026-09-02", mode: "swap", sourceDay: 1 }],
+    })
+  );
+  const on0902 = eventBlocks(ics).filter((b) => b.includes(":20260902T"));
+  assert.equal(on0902.length, 1);
+  assert.match(on0902[0], /SUMMARY:高数/);
+  assert.match(on0902[0], /调休/);
+  assert.match(on0902[0], /adj20260902/);
+  // 原周三课当天被停，第 2 周周三恢复正常
+  assert.doesNotMatch(on0902[0], /周三课/);
+  const on0909 = eventBlocks(ics).filter((b) => b.includes(":20260909T"));
+  assert.equal(on0909.length, 1);
+  assert.match(on0909[0], /SUMMARY:周三课/);
+  // 高数常规周一日程不受影响
+  assert.match(ics, /DTSTART;TZID=Asia\/Shanghai:20260831T080000/);
+  assert.match(ics, /DTSTART;TZID=Asia\/Shanghai:20260907T080000/);
+});
+
+test("调休: 换课来源课程当周不上课则不补", () => {
+  const ics = generateICS(
+    baseCfg({
+      courses: [{ name: "只有第2周", day: 1, startPeriod: 1, endPeriod: 1, weeks: "2" }],
+      adjustments: [{ date: "2026-09-02", mode: "swap", sourceDay: 1 }], // 第 1 周周三
+    })
+  );
+  const on0902 = eventBlocks(ics).filter((b) => b.includes(":20260902T"));
+  assert.equal(on0902.length, 0);
+});
+
+test("调休: 非法规则被忽略", () => {
+  const base = generateICS(baseCfg());
+  const withBad = generateICS(
+    baseCfg({
+      adjustments: [
+        { date: "2026/10/01", mode: "off" },
+        { date: "2026-10-01", mode: "swap", sourceDay: 9 },
+        { date: "", mode: "off" },
+        null,
+      ],
+    })
+  );
+  assert.equal(
+    (withBad.match(/BEGIN:VEVENT/g) || []).length,
+    (base.match(/BEGIN:VEVENT/g) || []).length
+  );
+});
+
+// ---------------------------------------------------------------------------
 // findConflicts
 // ---------------------------------------------------------------------------
 
