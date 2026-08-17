@@ -1,6 +1,6 @@
 {
   "name": "kebiao2ics",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "把大学课程表变成手机日历 .ics 文件，纯浏览器本地运行",
   "private": true,
   "type": "module",

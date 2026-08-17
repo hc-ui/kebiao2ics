@@ -21,7 +21,22 @@ export function parseWeeks(pattern, maxWeek = 30) {
   if (typeof pattern !== "string" || !pattern.trim()) {
     throw new Error("周数不能为空，例如：1-16");
   }
-  const cleaned = pattern.replace(/[第周\s]/g, "").replace(/[，、;；]/g, ",");
+  const raw = pattern.trim();
+  if (/^(全周|全部|每周|全程)$/.test(raw)) {
+    return Array.from({ length: 16 }, (_, i) => i + 1);
+  }
+  const front = raw.match(/^前\s*(\d+)\s*周?$/);
+  if (front) {
+    const n = parseInt(front[1], 10);
+    if (n < 1 || n > maxWeek) {
+      throw new Error(`周数超出 1-${maxWeek} 范围：「${raw}」`);
+    }
+    return Array.from({ length: n }, (_, i) => i + 1);
+  }
+  const cleaned = raw
+    .replace(/[第周\s]/g, "")
+    .replace(/[至到]/g, "-")
+    .replace(/[，、;；]/g, ",");
   const weeks = new Set();
   for (const seg of cleaned.split(",")) {
     if (!seg) continue;

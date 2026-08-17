@@ -291,7 +291,7 @@ $("cWeeks").addEventListener("input", () => {
   const hint = $("weeksHint");
   const v = $("cWeeks").value.trim();
   if (!v) {
-    hint.textContent = "支持：1-16 · 1-8,10-16 · 2-16双 · 1-15单";
+    hint.textContent = "支持：1-16 · 1至16 · 全周 · 前8周 · 1-8,10-16 · 2-16双";
     hint.style.color = "";
     return;
   }
