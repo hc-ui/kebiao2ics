@@ -35,7 +35,7 @@ export function parseWeeks(pattern, maxWeek = 30) {
   }
   const cleaned = raw
     .replace(/[第周\s]/g, "")
-    .replace(/[至到]/g, "-")
+    .replace(/[至到－]/g, "-")
     .replace(/[，、;；]/g, ",");
   const weeks = new Set();
   for (const seg of cleaned.split(",")) {
