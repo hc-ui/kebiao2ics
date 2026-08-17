@@ -3,11 +3,11 @@
 [![CI](https://github.com/hc-ui/kebiao2ics/actions/workflows/ci.yml/badge.svg)](https://github.com/hc-ui/kebiao2ics/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**把大学课程表变成手机日历文件（.ics）。**
+教务系统不给日历订阅。打开网页，填课表，下载 `.ics`，导入手机日历。
 
-**[在线使用 → hc-ui.github.io/kebiao2ics](https://hc-ui.github.io/kebiao2ics/)** — 打开就能用，不用安装任何东西。
+**[在线使用 →](https://hc-ui.github.io/kebiao2ics/)** 免安装，课表不离开你的浏览器。
 
-Turn your Chinese university class schedule into an `.ics` calendar file — entirely in the browser, nothing uploaded. Works with iPhone / Android / Apple Watch / Outlook / Google Calendar.
+Works with iPhone / Android / Apple Watch / Outlook / Google Calendar. Nothing is uploaded.
 
 ![课程列表与课表预览截图](assets/screenshot.png)
 
