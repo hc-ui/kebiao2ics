@@ -133,14 +133,16 @@ function foldLine(line) {
 }
 
 function toIcsTime(hhmm) {
-  const m = String(hhmm).trim().match(/^(\d{1,2}):(\d{2})$/);
+  // HTML <input type="time"> may yield HH:MM or HH:MM:SS (.sss) depending on the browser.
+  const m = String(hhmm).trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?$/);
   if (!m) throw new Error(`时间格式应为 HH:MM，收到：「${hhmm}」`);
   const hour = Number(m[1]);
   const minute = Number(m[2]);
-  if (hour > 23 || minute > 59) {
+  const second = m[3] == null ? 0 : Number(m[3]);
+  if (hour > 23 || minute > 59 || second > 59) {
     throw new Error(`时间超出 00:00–23:59，收到：「${hhmm}」`);
   }
-  return `${pad2(hour)}${pad2(minute)}00`;
+  return `${pad2(hour)}${pad2(minute)}${pad2(second)}`;
 }
 
 /** 取第 idx 节（1 起）的开始/结束时间，出错时指明具体节次。 */
