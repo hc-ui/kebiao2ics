@@ -9,8 +9,6 @@
 
 Works with iPhone / Android / Apple Watch / Outlook / Google Calendar. Nothing is uploaded.
 
-![课程列表与课表预览截图](assets/screenshot.png)
-
 ## 为什么做这个
 
 - 教务系统只给你一张网页课表或 Excel，**不提供日历订阅**；
@@ -75,7 +73,8 @@ python -m http.server 8000   # 或任何静态服务器
 核心逻辑（周数解析、ics 生成）在 `ics.js`，跑测试：
 
 ```bash
-node --test tests/core.test.mjs
+npm test
+npm run lint
 ```
 
 ## English

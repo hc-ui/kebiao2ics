@@ -64,10 +64,32 @@ function pad2(n) {
   return String(n).padStart(2, "0");
 }
 
+/**
+ * 校验并规范化日历日期。拒绝缺位、非数字，以及 2026-02-30 这类会被 Date 悄悄滚月的值。
+ * 手工备份 / 导入损坏 JSON 时，宁可报错也不生成 NaN 日程。
+ */
+export function parseYmd(ymd) {
+  if (typeof ymd !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(ymd.trim())) {
+    throw new Error(`日期格式应为 YYYY-MM-DD，收到：「${ymd ?? ""}」`);
+  }
+  const raw = ymd.trim();
+  const [y, m, d] = raw.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) {
+    throw new Error(`无效日期：「${raw}」`);
+  }
+  return raw;
+}
+
 /** "YYYY-MM-DD" 加 days 天，返回 "YYYY-MM-DD"（本地日期运算，无时区问题）。 */
 export function addDays(ymd, days) {
-  const [y, m, d] = ymd.split("-").map(Number);
-  const dt = new Date(y, m - 1, d + days);
+  const raw = parseYmd(ymd);
+  const [y, m, d] = raw.split("-").map(Number);
+  const n = Number(days);
+  if (!Number.isFinite(n) || !Number.isInteger(n)) {
+    throw new Error(`天数必须是整数，收到：「${days}」`);
+  }
+  const dt = new Date(y, m - 1, d + n);
   return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
 }
 
@@ -111,9 +133,16 @@ function foldLine(line) {
 }
 
 function toIcsTime(hhmm) {
-  const m = String(hhmm).trim().match(/^(\d{1,2}):(\d{2})$/);
+  // HTML <input type="time"> may yield HH:MM or HH:MM:SS (.sss) depending on the browser.
+  const m = String(hhmm).trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?$/);
   if (!m) throw new Error(`时间格式应为 HH:MM，收到：「${hhmm}」`);
-  return `${pad2(m[1])}${m[2]}00`;
+  const hour = Number(m[1]);
+  const minute = Number(m[2]);
+  const second = m[3] == null ? 0 : Number(m[3]);
+  if (hour > 23 || minute > 59 || second > 59) {
+    throw new Error(`时间超出 00:00–23:59，收到：「${hhmm}」`);
+  }
+  return `${pad2(hour)}${pad2(minute)}${pad2(second)}`;
 }
 
 /** 取第 idx 节（1 起）的开始/结束时间，出错时指明具体节次。 */
@@ -153,22 +182,31 @@ function diffDays(a, b) {
  * @returns {string} ics 文本
  */
 export function generateICS(cfg) {
-  const { calendarName = "我的课表", periods, courses, alarmMinutes = 0, adjustments = [] } = cfg;
+  const { calendarName = "我的课表", periods, courses, adjustments = [] } = cfg;
   if (!cfg.firstMonday) throw new Error("请先设置第一周周一的日期");
   if (!Array.isArray(periods) || !periods.length) throw new Error("作息时间表为空");
   if (!Array.isArray(courses) || !courses.length) throw new Error("请先添加课程");
+  const alarmRaw = cfg.alarmMinutes ?? 0;
+  const alarmMinutes = Number(alarmRaw);
+  if (!Number.isFinite(alarmMinutes) || alarmMinutes < 0) {
+    throw new Error(`提醒分钟数无效，收到：「${alarmRaw}」`);
+  }
   const firstMonday = mondayOf(cfg.firstMonday);
 
   // 调休规则表：date → rule（同一天多条规则时，后写的生效）
   const ruleByDate = new Map();
   for (const r of adjustments) {
-    if (!r || !/^\d{4}-\d{2}-\d{2}$/.test(String(r.date))) continue;
+    if (!r || !r.date) continue;
+    const rawDate = String(r.date);
+    // Slash dates / empty leftovers stay ignored; YYYY-MM-DD must be a real day.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) continue;
+    const date = parseYmd(rawDate);
     if (r.mode === "swap") {
       const sd = Number(r.sourceDay);
       if (!(sd >= 1 && sd <= 7)) continue;
-      ruleByDate.set(r.date, { mode: "swap", sourceDay: sd });
+      ruleByDate.set(date, { mode: "swap", sourceDay: sd });
     } else if (r.mode === "off") {
-      ruleByDate.set(r.date, { mode: "off" });
+      ruleByDate.set(date, { mode: "off" });
     }
   }
 

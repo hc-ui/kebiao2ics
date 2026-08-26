@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseWeeks, addDays, mondayOf, generateICS, countEvents, findConflicts } from "../ics.js";
+import { parseWeeks, parseYmd, addDays, mondayOf, generateICS, countEvents, findConflicts } from "../ics.js";
 
 // ---------------------------------------------------------------------------
 // parseWeeks
@@ -47,10 +47,11 @@ test("parseWeeks: 全角破折号 1－16", () => {
   assert.deepEqual(parseWeeks("1－8"), [1, 2, 3, 4, 5, 6, 7, 8]);
 });
 
-test("parseWeeks: 全周/全部/每周 视为 1-16", () => {
+test("parseWeeks: 全周/全部/每周/全程 视为 1-16", () => {
   assert.deepEqual(parseWeeks("全周"), parseWeeks("1-16"));
   assert.deepEqual(parseWeeks("全部"), parseWeeks("1-16"));
   assert.deepEqual(parseWeeks("每周"), parseWeeks("1-16"));
+  assert.deepEqual(parseWeeks("全程"), parseWeeks("1-16"));
 });
 
 test("parseWeeks: 前8周", () => {
@@ -90,6 +91,19 @@ test("mondayOf: 周三对齐到周一", () => {
 
 test("mondayOf: 周日属于本周（对齐到前面的周一）", () => {
   assert.equal(mondayOf("2026-09-06"), "2026-08-31");
+});
+
+test("parseYmd: 拒绝缺位、乱格式和会滚月的假日期", () => {
+  assert.equal(parseYmd("2026-08-31"), "2026-08-31");
+  assert.throws(() => parseYmd("2026/08/31"), /YYYY-MM-DD/);
+  assert.throws(() => parseYmd("2026-2-3"), /YYYY-MM-DD/);
+  assert.throws(() => parseYmd("2026-02-30"), /无效日期/);
+  assert.throws(() => parseYmd("not-a-date"), /YYYY-MM-DD/);
+});
+
+test("addDays: 非法日期或非整数天数会抛错，避免写出 NaN 日程", () => {
+  assert.throws(() => addDays("2026-13-40", 1), /无效日期|YYYY-MM-DD/);
+  assert.throws(() => addDays("2026-08-31", 1.5), /天数必须是整数/);
 });
 
 // ---------------------------------------------------------------------------
@@ -258,6 +272,25 @@ test("generateICS: 作息时间填错时报错指明节次", () => {
   );
 });
 
+test("generateICS: 作息时间超出 24 小时制时报错", () => {
+  assert.throws(
+    () =>
+      generateICS(
+        baseCfg({
+          periods: [{ start: "24:00", end: "24:45" }],
+          courses: [{ name: "夜课", day: 1, startPeriod: 1, endPeriod: 1, weeks: "1" }],
+        })
+      ),
+    /00:00–23:59/
+  );
+});
+
+test("generateICS: 无效开学日期和负数提醒会抛错", () => {
+  assert.throws(() => generateICS(baseCfg({ firstMonday: "2026-02-30" })), /无效日期/);
+  assert.throws(() => generateICS(baseCfg({ alarmMinutes: -5 })), /提醒分钟数无效/);
+  assert.throws(() => generateICS(baseCfg({ alarmMinutes: "soon" })), /提醒分钟数无效/);
+});
+
 test("generateICS: 下课时间早于上课时间时报错", () => {
   const reversed = [{ start: "10:00", end: "08:00" }];
   assert.throws(
@@ -372,6 +405,13 @@ test("调休: 非法规则被忽略", () => {
   assert.equal(
     (withBad.match(/BEGIN:VEVENT/g) || []).length,
     (base.match(/BEGIN:VEVENT/g) || []).length
+  );
+});
+
+test("调休: YYYY-MM-DD 假日期会抛错，避免悄悄滚月", () => {
+  assert.throws(
+    () => generateICS(baseCfg({ adjustments: [{ date: "2026-02-30", mode: "off" }] })),
+    /无效日期/
   );
 });
 
