@@ -194,13 +194,17 @@ export function generateICS(cfg) {
   // 调休规则表：date → rule（同一天多条规则时，后写的生效）
   const ruleByDate = new Map();
   for (const r of adjustments) {
-    if (!r || !/^\d{4}-\d{2}-\d{2}$/.test(String(r.date))) continue;
+    if (!r || !r.date) continue;
+    const rawDate = String(r.date);
+    // Slash dates / empty leftovers stay ignored; YYYY-MM-DD must be a real day.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) continue;
+    const date = parseYmd(rawDate);
     if (r.mode === "swap") {
       const sd = Number(r.sourceDay);
       if (!(sd >= 1 && sd <= 7)) continue;
-      ruleByDate.set(r.date, { mode: "swap", sourceDay: sd });
+      ruleByDate.set(date, { mode: "swap", sourceDay: sd });
     } else if (r.mode === "off") {
-      ruleByDate.set(r.date, { mode: "off" });
+      ruleByDate.set(date, { mode: "off" });
     }
   }
 
